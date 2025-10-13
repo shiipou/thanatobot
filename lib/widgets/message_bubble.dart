@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/chat_message.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -27,18 +28,73 @@ class MessageBubble extends StatelessWidget {
               decoration: BoxDecoration(
                 color: message.isUser
                     ? Theme.of(context).primaryColor
-                    : Colors.grey[300],
+                    : Colors.grey[50],
                 borderRadius: BorderRadius.circular(16),
+                border: message.isUser 
+                    ? null 
+                    : Border.all(color: Colors.grey[200]!, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    message.content,
-                    style: TextStyle(
-                      color: message.isUser ? Colors.white : Colors.black87,
+                  if (message.isUser)
+                    Text(
+                      message.content,
+                      style: TextStyle(
+                        color: message.isUser ? Colors.white : Colors.black87,
+                      ),
+                    )
+                  else
+                    MarkdownBody(
+                      data: message.content,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 14,
+                        ),
+                        h1: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        h2: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        h3: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        code: TextStyle(
+                          backgroundColor: Colors.grey[200],
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                        codeblockDecoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        blockquote: TextStyle(
+                          color: Colors.black54,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        listBullet: TextStyle(
+                          color: Colors.black87,
+                        ),
+                        strong: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                        em: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      selectable: true,
                     ),
-                  ),
                   const SizedBox(height: 4),
                   Text(
                     _formatTime(message.timestamp),

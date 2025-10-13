@@ -138,23 +138,52 @@ class ChatProvider extends ChangeNotifier {
 
       notifyListeners();
 
-      // Get response from OpenAI
-      final response = await _openAIService!.sendMessageAndGetResponse(
-        threadId,
-        content,
-      );
-
-      // Save assistant message
+      // Create a placeholder assistant message that will be updated with streaming content
+      final assistantMessageId = DateTime.now().millisecondsSinceEpoch.toString();
       final assistantMessage = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: assistantMessageId,
         threadId: threadId,
-        content: response,
+        content: '',
         isUser: false,
         timestamp: DateTime.now(),
       );
 
-      await _storageService.saveMessage(assistantMessage);
-      _messages[threadId] = await _storageService.getMessages(threadId);
+      // Add the placeholder message to the list
+      if (_messages[threadId] == null) {
+        _messages[threadId] = [];
+      }
+      _messages[threadId]!.add(assistantMessage);
+      notifyListeners();
+
+      // Stream the response from OpenAI
+      String fullResponse = '';
+      await for (final chunk in _openAIService!.sendMessageAndGetStreamResponse(threadId, content)) {
+        fullResponse += chunk;
+        
+        // Update the assistant message content
+        final messageIndex = _messages[threadId]!.indexWhere((m) => m.id == assistantMessageId);
+        if (messageIndex >= 0) {
+          _messages[threadId]![messageIndex] = ChatMessage(
+            id: assistantMessageId,
+            threadId: threadId,
+            content: fullResponse,
+            isUser: false,
+            timestamp: assistantMessage.timestamp,
+          );
+          notifyListeners();
+        }
+      }
+
+      // Save the final complete message
+      final finalMessage = ChatMessage(
+        id: assistantMessageId,
+        threadId: threadId,
+        content: fullResponse,
+        isUser: false,
+        timestamp: assistantMessage.timestamp,
+      );
+      
+      await _storageService.saveMessage(finalMessage);
 
       // Update thread last message time again
       if (threadIndex >= 0) {
