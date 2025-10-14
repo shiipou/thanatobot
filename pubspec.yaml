@@ -1,0 +1,35 @@
+name: thanatobot
+description: A chatbot application using OpenAI Assistant API with multi-threaded conversations.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # HTTP client for API calls
+  http: ^1.1.0
+  
+  # Local storage
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.1
+  
+  # State management
+  provider: ^6.1.1
+  
+  # UI
+  cupertino_icons: ^1.0.6
+  
+  # Markdown rendering
+  flutter_markdown: ^0.6.18
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
