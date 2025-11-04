@@ -186,8 +186,8 @@ class OpenAIRealtimeClient {
           if (error != null) {
             final errorCode = error['code'] as String?;
             // Don't call error callback for expected errors
-            if (errorCode != 'response_cancel_not_active' &&
-                errorCode != 'conversation_already_has_active_response') {
+            if (errorCode != RealtimeConstants.errorCodeResponseCancelNotActive &&
+                errorCode != RealtimeConstants.errorCodeConversationAlreadyHasActiveResponse) {
               _onError?.call(error);
             }
           }

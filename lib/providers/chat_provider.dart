@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
+import 'package:uuid/uuid.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
 import '../models/communication_mode.dart';
@@ -11,6 +12,7 @@ import '../services/audio_playback_service.dart';
 
 class ChatProvider extends ChangeNotifier {
   final StorageService _storageService;
+  final Uuid _uuid = const Uuid();
   List<ChatThread> _threads = [];
   Map<String, List<ChatMessage>> _messages = {};
   OpenAIService? _openAIService;
@@ -24,6 +26,7 @@ class ChatProvider extends ChangeNotifier {
   bool _isRecording = false;
   bool _isPlayingAudio = false;
   String _currentTranscript = '';
+  String? _currentThreadId; // Track active thread for voice messages
 
   ChatProvider(this._storageService) {
     _init();
@@ -155,9 +158,28 @@ class ChatProvider extends ChangeNotifier {
 
   void _handleResponseDone() {
     // Save the complete transcript as a message if we have one
-    if (_currentTranscript.isNotEmpty) {
-      // Find the current thread and save the message
-      // This would need to be tracked separately
+    if (_currentTranscript.isNotEmpty && _currentThreadId != null) {
+      final assistantMessage = ChatMessage(
+        id: _uuid.v4(),
+        threadId: _currentThreadId!,
+        content: _currentTranscript,
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+      
+      // Save to storage asynchronously
+      _storageService.saveMessage(assistantMessage).then((_) {
+        // Reload messages for the thread
+        return _storageService.getMessages(_currentThreadId!);
+      }).then((messages) {
+        _messages[_currentThreadId!] = messages;
+        _currentTranscript = '';
+        notifyListeners();
+      }).catchError((error) {
+        _error = 'Failed to save message: $error';
+        notifyListeners();
+      });
+    } else {
       _currentTranscript = '';
     }
     _isPlayingAudio = false;
@@ -185,6 +207,7 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> loadMessages(String threadId) async {
     _messages[threadId] = await _storageService.getMessages(threadId);
+    _currentThreadId = threadId; // Set the active thread
     notifyListeners();
   }
 
@@ -204,8 +227,8 @@ class ChatProvider extends ChangeNotifier {
       if (!_useRealtimeApi && _openAIService != null) {
         openAIThreadId = await _openAIService!.createThread();
       } else {
-        // For Realtime API, we'll use a local ID
-        openAIThreadId = 'realtime_${DateTime.now().millisecondsSinceEpoch}';
+        // For Realtime API, we'll use a UUID
+        openAIThreadId = _uuid.v4();
       }
       
       final now = DateTime.now();
@@ -255,7 +278,7 @@ class ChatProvider extends ChangeNotifier {
     try {
       // Save user message
       final userMessage = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: _uuid.v4(),
         threadId: threadId,
         content: content,
         isUser: true,
@@ -283,7 +306,7 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
 
       // Create a placeholder assistant message that will be updated with streaming content
-      final assistantMessageId = DateTime.now().millisecondsSinceEpoch.toString();
+      final assistantMessageId = _uuid.v4();
       final assistantMessage = ChatMessage(
         id: assistantMessageId,
         threadId: threadId,
@@ -367,7 +390,7 @@ class ChatProvider extends ChangeNotifier {
 
       // Save user message
       final userMessage = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: _uuid.v4(),
         threadId: threadId,
         content: content,
         isUser: true,
@@ -394,26 +417,12 @@ class ChatProvider extends ChangeNotifier {
 
       notifyListeners();
 
+      // Set the current thread for the response
+      _currentThreadId = threadId;
+
       // Send text to realtime API
+      // The response will come through callbacks and be saved in _handleResponseDone
       await _realtimeService!.sendText(content);
-
-      // The response will come through callbacks
-      // For now, we'll wait a bit and then save what we received
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (_currentTranscript.isNotEmpty) {
-        final assistantMessage = ChatMessage(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          threadId: threadId,
-          content: _currentTranscript,
-          isUser: false,
-          timestamp: DateTime.now(),
-        );
-
-        await _storageService.saveMessage(assistantMessage);
-        _messages[threadId] = await _storageService.getMessages(threadId);
-        _currentTranscript = '';
-      }
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -423,7 +432,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   // Voice recording methods
-  Future<void> startVoiceRecording() async {
+  Future<void> startVoiceRecording(String threadId) async {
     if (_recordingService == null || _realtimeService == null) {
       throw Exception('Realtime services not configured');
     }
@@ -434,6 +443,9 @@ class ChatProvider extends ChangeNotifier {
         await _realtimeService!.connect();
       }
 
+      // Set the current thread for the response
+      _currentThreadId = threadId;
+      
       _isRecording = true;
       notifyListeners();
 
@@ -451,7 +463,7 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> stopVoiceRecording() async {
+  Future<void> stopVoiceRecording(String threadId) async {
     if (_recordingService == null || _realtimeService == null) {
       return;
     }

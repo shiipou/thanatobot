@@ -95,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               items: const [
                 DropdownMenuItem(
-                  value: 'gpt-4o-realtime-preview-2024-10-01',
+                  value: RealtimeConstants.defaultModel,
                   child: Text('GPT-4o Realtime Preview'),
                 ),
               ],

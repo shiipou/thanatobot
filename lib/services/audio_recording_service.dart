@@ -43,37 +43,32 @@ class AudioRecordingService {
     _onAudioData = onAudioData;
     
     try {
-      // Check if the recorder has permission
-      if (await _recorder.hasPermission()) {
-        // Start recording with PCM16 format at 24kHz
-        final stream = await _recorder.startStream(
-          const RecordConfig(
-            encoder: AudioEncoder.pcm16bits,
-            sampleRate: RealtimeConstants.audioSampleRate,
-            numChannels: 1,
-          ),
-        );
-        
-        _isRecording = true;
-        
-        // Listen to the audio stream
-        _audioStreamSubscription = stream.listen(
-          (data) {
-            if (_isRecording && _onAudioData != null) {
-              _onAudioData!(data);
-            }
-          },
-          onError: (error) {
-            _isRecording = false;
-            throw Exception('Error recording audio: $error');
-          },
-          onDone: () {
-            _isRecording = false;
-          },
-        );
-      } else {
-        throw Exception('Microphone permission not available');
-      }
+      // Start recording with PCM16 format at 24kHz
+      final stream = await _recorder.startStream(
+        const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: RealtimeConstants.audioSampleRate,
+          numChannels: 1,
+        ),
+      );
+      
+      _isRecording = true;
+      
+      // Listen to the audio stream
+      _audioStreamSubscription = stream.listen(
+        (data) {
+          if (_isRecording && _onAudioData != null) {
+            _onAudioData!(data);
+          }
+        },
+        onError: (error) {
+          _isRecording = false;
+          throw Exception('Error recording audio: $error');
+        },
+        onDone: () {
+          _isRecording = false;
+        },
+      );
     } catch (e) {
       _isRecording = false;
       rethrow;

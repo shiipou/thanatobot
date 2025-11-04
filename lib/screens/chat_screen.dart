@@ -233,7 +233,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _startVoiceRecording(BuildContext context, ChatProvider provider) {
-    provider.startVoiceRecording().catchError((error) {
+    provider.startVoiceRecording(widget.thread.id).catchError((error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to start recording: $error')),
       );
@@ -241,7 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _stopVoiceRecording(BuildContext context, ChatProvider provider) {
-    provider.stopVoiceRecording().catchError((error) {
+    provider.stopVoiceRecording(widget.thread.id).catchError((error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to stop recording: $error')),
       );

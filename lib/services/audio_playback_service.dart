@@ -12,6 +12,12 @@ class AudioPlaybackService {
   bool get isPlaying => _isPlaying;
   
   /// Add audio chunk to the buffer and play if not already playing
+  /// 
+  /// Note: This implementation uses BytesSource which may not work properly 
+  /// with raw PCM16 audio on all platforms. For production use, consider:
+  /// 1. Converting PCM16 to WAV format before playback
+  /// 2. Using a platform-specific audio library
+  /// 3. Using flutter_sound or just_audio with proper audio format handling
   Future<void> playAudioChunk(Uint8List audioData) async {
     _audioBuffer.add(audioData);
     

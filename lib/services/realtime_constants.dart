@@ -23,6 +23,10 @@ class RealtimeConstants {
     'shimmer',
   ];
   
+  // Error codes that should not be logged as errors
+  static const String errorCodeResponseCancelNotActive = 'response_cancel_not_active';
+  static const String errorCodeConversationAlreadyHasActiveResponse = 'conversation_already_has_active_response';
+  
   // Event types
   static const String eventTypeSessionUpdate = 'session.update';
   static const String eventTypeInputAudioBufferAppend = 'input_audio_buffer.append';
