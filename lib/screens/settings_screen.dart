@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
+import '../models/communication_mode.dart';
+import '../services/realtime_constants.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,6 +15,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
   final _assistantIdController = TextEditingController();
   bool _obscureApiKey = true;
+  bool _useRealtimeApi = false;
+  String _selectedModel = RealtimeConstants.defaultModel;
+  String _selectedVoice = RealtimeConstants.defaultVoice;
+  CommunicationMode _selectedMode = CommunicationMode.text;
 
   @override
   void dispose() {
@@ -31,7 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'OpenAI Configuration',
+            'API Configuration',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -42,7 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             controller: _apiKeyController,
             obscureText: _obscureApiKey,
             decoration: InputDecoration(
-              labelText: 'API Key',
+              labelText: 'OpenAI API Key',
               hintText: 'sk-...',
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(
@@ -58,15 +64,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          TextField(
-            controller: _assistantIdController,
-            decoration: const InputDecoration(
-              labelText: 'Assistant ID',
-              hintText: 'asst_...',
-              border: OutlineInputBorder(),
-            ),
+          SwitchListTile(
+            title: const Text('Use Realtime API (Voice Support)'),
+            subtitle: const Text('Enable voice and real-time communication'),
+            value: _useRealtimeApi,
+            onChanged: (value) {
+              setState(() {
+                _useRealtimeApi = value;
+              });
+            },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          if (!_useRealtimeApi) ...[
+            TextField(
+              controller: _assistantIdController,
+              decoration: const InputDecoration(
+                labelText: 'Assistant ID',
+                hintText: 'asst_...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (_useRealtimeApi) ...[
+            DropdownButtonFormField<String>(
+              value: _selectedModel,
+              decoration: const InputDecoration(
+                labelText: 'Model',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'gpt-4o-realtime-preview-2024-10-01',
+                  child: Text('GPT-4o Realtime Preview'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedModel = value;
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedVoice,
+              decoration: const InputDecoration(
+                labelText: 'Voice',
+                border: OutlineInputBorder(),
+              ),
+              items: RealtimeConstants.availableVoices
+                  .map((voice) => DropdownMenuItem(
+                        value: voice,
+                        child: Text(voice[0].toUpperCase() + voice.substring(1)),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedVoice = value;
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<CommunicationMode>(
+              value: _selectedMode,
+              decoration: const InputDecoration(
+                labelText: 'Communication Mode',
+                border: OutlineInputBorder(),
+              ),
+              items: CommunicationMode.values
+                  .map((mode) => DropdownMenuItem(
+                        value: mode,
+                        child: Text(mode.name),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedMode = value;
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
           ElevatedButton(
             onPressed: _saveConfiguration,
             style: ElevatedButton.styleFrom(
@@ -102,29 +186,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text('Version 1.0.0'),
                   SizedBox(height: 16),
                   Text(
-                    'A chatbot application using OpenAI Assistant API with multi-threaded conversations.',
+                    'A chatbot application with support for OpenAI Assistant API and Realtime API for voice communication.',
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'How to get started:',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 8),
-                  Text('1. Create an OpenAI account at platform.openai.com'),
-                  Text('2. Generate an API key from your account'),
-                  Text('3. Create an Assistant in the Assistants section'),
-                  Text('4. Copy the Assistant ID'),
-                  Text('5. Enter both values above and save'),
+                  const SizedBox(height: 8),
+                  const Text('1. Create an OpenAI account at platform.openai.com'),
+                  const Text('2. Generate an API key from your account'),
+                  if (!_useRealtimeApi) ...[
+                    const Text('3. Create an Assistant in the Assistants section'),
+                    const Text('4. Copy the Assistant ID'),
+                    const Text('5. Enter both values above and save'),
+                  ] else ...[
+                    const Text('3. Enable Realtime API access in your account'),
+                    const Text('4. Choose your preferred voice and mode'),
+                    const Text('5. Enter your API key and save'),
+                  ],
                 ],
               ),
             ),
@@ -136,38 +226,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _saveConfiguration() async {
     final apiKey = _apiKeyController.text.trim();
-    final assistantId = _assistantIdController.text.trim();
 
-    if (apiKey.isEmpty || assistantId.isEmpty) {
+    if (apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all fields'),
+          content: Text('Please enter an API key'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    try {
-      await context.read<ChatProvider>().configure(apiKey, assistantId);
-      
-      if (mounted) {
+    if (!_useRealtimeApi) {
+      final assistantId = _assistantIdController.text.trim();
+      if (assistantId.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Configuration saved successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
+            content: Text('Please enter an Assistant ID'),
             backgroundColor: Colors.red,
           ),
         );
+        return;
+      }
+
+      try {
+        await context.read<ChatProvider>().configure(apiKey, assistantId);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Configuration saved successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } else {
+      try {
+        await context.read<ChatProvider>().configureRealtime(
+              apiKey: apiKey,
+              useRealtime: true,
+              model: _selectedModel,
+              voice: _selectedVoice,
+              mode: _selectedMode,
+            );
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Realtime API configuration saved successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

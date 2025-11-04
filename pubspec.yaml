@@ -13,6 +13,14 @@ dependencies:
   # HTTP client for API calls
   http: ^1.1.0
   
+  # WebSocket for Realtime API
+  web_socket_channel: ^2.4.0
+  
+  # Audio recording and playback
+  record: ^5.0.4
+  audioplayers: ^5.2.1
+  permission_handler: ^11.0.1
+  
   # Local storage
   shared_preferences: ^2.2.2
   path_provider: ^2.1.1

@@ -133,6 +133,11 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessageInput() {
     return Consumer<ChatProvider>(
       builder: (context, provider, child) {
+        final supportsVoice = provider.useRealtimeApi && 
+                              provider.communicationMode.supportsVoice;
+        final supportsText = !provider.useRealtimeApi || 
+                            provider.communicationMode.supportsText;
+        
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
@@ -147,35 +152,71 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           child: Row(
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _messageController,
-                  enabled: !provider.isLoading,
-                  decoration: const InputDecoration(
-                    hintText: 'Type a message...',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+              if (supportsText)
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    enabled: !provider.isLoading && !provider.isRecording,
+                    decoration: const InputDecoration(
+                      hintText: 'Type a message...',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    maxLines: null,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendMessage(context, provider),
+                  ),
+                ),
+              if (!supportsText && supportsVoice)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      provider.isRecording 
+                          ? 'Recording...' 
+                          : 'Tap microphone to speak',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _sendMessage(context, provider),
                 ),
-              ),
               const SizedBox(width: 8),
-              IconButton(
-                onPressed: provider.isLoading
-                    ? null
-                    : () => _sendMessage(context, provider),
-                icon: Icon(
-                  Icons.send,
-                  color: provider.isLoading
-                      ? Colors.grey
-                      : Theme.of(context).primaryColor,
+              if (supportsText)
+                IconButton(
+                  onPressed: provider.isLoading || provider.isRecording
+                      ? null
+                      : () => _sendMessage(context, provider),
+                  icon: Icon(
+                    Icons.send,
+                    color: provider.isLoading || provider.isRecording
+                        ? Colors.grey
+                        : Theme.of(context).primaryColor,
+                  ),
                 ),
-              ),
+              if (supportsVoice)
+                GestureDetector(
+                  onLongPressStart: (_) => _startVoiceRecording(context, provider),
+                  onLongPressEnd: (_) => _stopVoiceRecording(context, provider),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: provider.isRecording 
+                          ? Colors.red 
+                          : Theme.of(context).primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      provider.isRecording ? Icons.mic : Icons.mic_none,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
             ],
           ),
         );
@@ -189,5 +230,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _messageController.clear();
     provider.sendMessage(widget.thread.id, text);
+  }
+
+  void _startVoiceRecording(BuildContext context, ChatProvider provider) {
+    provider.startVoiceRecording().catchError((error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to start recording: $error')),
+      );
+    });
+  }
+
+  void _stopVoiceRecording(BuildContext context, ChatProvider provider) {
+    provider.stopVoiceRecording().catchError((error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to stop recording: $error')),
+      );
+    });
   }
 }
