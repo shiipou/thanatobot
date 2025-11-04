@@ -74,4 +74,37 @@ class StorageService {
   Future<void> saveAssistantId(String assistantId) async {
     await _prefs?.setString('assistant_id', assistantId);
   }
+
+  // Realtime API settings
+  Future<bool> getUseRealtimeApi() async {
+    return _prefs?.getBool('use_realtime_api') ?? false;
+  }
+
+  Future<void> saveUseRealtimeApi(bool useRealtime) async {
+    await _prefs?.setBool('use_realtime_api', useRealtime);
+  }
+
+  Future<String> getRealtimeModel() async {
+    return _prefs?.getString('realtime_model') ?? 'gpt-4o-realtime-preview-2024-10-01';
+  }
+
+  Future<void> saveRealtimeModel(String model) async {
+    await _prefs?.setString('realtime_model', model);
+  }
+
+  Future<String> getRealtimeVoice() async {
+    return _prefs?.getString('realtime_voice') ?? 'alloy';
+  }
+
+  Future<void> saveRealtimeVoice(String voice) async {
+    await _prefs?.setString('realtime_voice', voice);
+  }
+
+  Future<String> getCommunicationMode() async {
+    return _prefs?.getString('communication_mode') ?? 'text';
+  }
+
+  Future<void> saveCommunicationMode(String mode) async {
+    await _prefs?.setString('communication_mode', mode);
+  }
 }
