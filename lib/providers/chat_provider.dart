@@ -5,7 +5,7 @@ import '../models/chat_message.dart';
 import '../models/communication_mode.dart';
 import '../services/storage_service.dart';
 import '../services/openai_service.dart';
-import '../services/openai_realtime_service.dart';
+import '../services/openai_realtime_client.dart';
 import '../services/audio_recording_service.dart';
 import '../services/audio_playback_service.dart';
 
@@ -14,7 +14,7 @@ class ChatProvider extends ChangeNotifier {
   List<ChatThread> _threads = [];
   Map<String, List<ChatMessage>> _messages = {};
   OpenAIService? _openAIService;
-  OpenAIRealtimeService? _realtimeService;
+  OpenAIRealtimeClient? _realtimeService;
   AudioRecordingService? _recordingService;
   AudioPlaybackService? _playbackService;
   bool _isLoading = false;
@@ -61,7 +61,7 @@ class ChatProvider extends ChangeNotifier {
         final model = await _storageService.getRealtimeModel();
         final voice = await _storageService.getRealtimeVoice();
         
-        _realtimeService = OpenAIRealtimeService(
+        _realtimeService = OpenAIRealtimeClient(
           apiKey: apiKey,
           model: model,
           voice: voice,

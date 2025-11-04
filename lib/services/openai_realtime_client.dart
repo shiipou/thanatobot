@@ -1,17 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'realtime_constants.dart';
 
-/// Client for OpenAI Realtime API with voice and text support
-class OpenAIRealtimeService {
+/// Client for OpenAI Realtime API with proper WebSocket header support
+class OpenAIRealtimeClient {
   final String apiKey;
   final String model;
   final String voice;
   final String instructions;
   
-  WebSocketChannel? _channel;
+  WebSocket? _socket;
   StreamSubscription? _subscription;
   bool _connected = false;
   bool _hasActiveResponse = false;
@@ -25,7 +25,7 @@ class OpenAIRealtimeService {
   Function()? _onSpeechStopped;
   Function(Map<String, dynamic>)? _onError;
   
-  OpenAIRealtimeService({
+  OpenAIRealtimeClient({
     required this.apiKey,
     this.model = RealtimeConstants.defaultModel,
     this.voice = RealtimeConstants.defaultVoice,
@@ -36,31 +36,37 @@ class OpenAIRealtimeService {
   bool get hasActiveResponse => _hasActiveResponse;
   bool get isSpeaking => _isSpeaking;
   
-  /// Connect to OpenAI Realtime API
+  /// Connect to OpenAI Realtime API with proper headers
   Future<void> connect() async {
     if (_connected) {
       return;
     }
     
     try {
+      // Parse the URL
       final uri = Uri.parse('${RealtimeConstants.realtimeUrl}?model=$model');
+      
+      // Create headers for WebSocket connection
       final headers = {
         'Authorization': 'Bearer $apiKey',
         'OpenAI-Beta': 'realtime=v1',
       };
       
-      _channel = WebSocketChannel.connect(
-        uri,
-        // Note: web_socket_channel doesn't support custom headers directly
-        // For production, you may need to use a different WebSocket library
-        // or implement a custom connection that supports headers
+      // Connect using dart:io WebSocket with custom headers
+      _socket = await WebSocket.connect(
+        uri.toString(),
+        headers: headers,
       );
       
       _connected = true;
       
       // Start listening to messages
-      _subscription = _channel!.stream.listen(
-        _handleMessage,
+      _subscription = _socket!.listen(
+        (message) {
+          if (message is String) {
+            _handleMessage(message);
+          }
+        },
         onError: (error) {
           _connected = false;
           _onError?.call({'message': error.toString()});
@@ -87,8 +93,8 @@ class OpenAIRealtimeService {
     _connected = false;
     await _subscription?.cancel();
     _subscription = null;
-    await _channel?.sink.close();
-    _channel = null;
+    await _socket?.close();
+    _socket = null;
   }
   
   /// Configure the session with desired settings
@@ -118,22 +124,22 @@ class OpenAIRealtimeService {
   
   /// Send an event to the WebSocket
   Future<void> _sendEvent(Map<String, dynamic> event) async {
-    if (!_connected || _channel == null) {
+    if (!_connected || _socket == null) {
       throw Exception('WebSocket not connected');
     }
     
     try {
       final eventJson = jsonEncode(event);
-      _channel!.sink.add(eventJson);
+      _socket!.add(eventJson);
     } catch (e) {
       throw Exception('Error sending event: $e');
     }
   }
   
   /// Handle incoming WebSocket messages
-  void _handleMessage(dynamic message) {
+  void _handleMessage(String message) {
     try {
-      final data = jsonDecode(message as String) as Map<String, dynamic>;
+      final data = jsonDecode(message) as Map<String, dynamic>;
       final eventType = data['type'] as String?;
       
       switch (eventType) {
